@@ -16,8 +16,12 @@
 import socket
 import os
 from Crypto.PublicKey import RSA
+from Crypto.Cipher import AES
 from Crypto.Cipher import PKCS1_OAEP as pkcs1
-from base64 import b64decode,b64encode
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import padding
 
 
 host = "localhost"
@@ -38,6 +42,13 @@ def generate_key():
     return os.urandom(16)
 
 
+def helper():
+	#password must have a b in front
+	kf = open("keys.pem", "rb")
+	public_Key = serialization.load_pem_public_key(kf.read(),backend=default_backend())
+	kf.close()
+	print("fooey")
+	return public_Key
 
 # Takes an AES session key and encrypts it using the appropriate
 # key and return the value
@@ -45,10 +56,8 @@ def encrypt_handshake(session_key):
     # TODO: Implement this function
     
     #message = session_key. We must encrypt this session key with the server's public key so no one can know the AES session key
-    print("healthy")
-    encryptKey = RSA.importKey(pubkey)
-    cipher = pkcs1.new(encryptKey)
-    cipher_message = cipher.encrypt(session_key)
+    public_key = helper()
+    cipher_message = public_key.encrypt(session_key,padding=padding.OAEP(mgf=padding.MGF1(hashes.SHA1()),algorithm=hashes.SHA1(),label=None,))
     print("cipher")
     return cipher_message
 
@@ -56,24 +65,30 @@ def encrypt_handshake(session_key):
 # Encrypts the message using AES. Same as server function
 def encrypt_message(message, session_key):
     # TODO: Implement this function
-    
-    #same as encrypt_handshake except the key used is the AES session key and the message is an actual message
-    key = RSA.importKey(session_key)
-    cipher = Cipher_PKCS1_v1_5.new(encryptKey)
-    cipher_message = cipher.encrypt(message.encode())
-    return cipher_message
+    #techtutorialsx.com ref
+	length_Message = len(message)
+	
+	#integer division to get proper padding
+	padding = ((length_Message + 16) // 16) * 16 
+	padded_Message = message + " "*(padding-length_Message)
+	cipher = AES.new(session_key, AES.MODE_ECB)
+	encMessage = cipher.encrypt(padded_Message)
+	print('encrypt message done')
+	return encMessage
     
 
 
 # Decrypts the message using AES. Same as server function
 def decrypt_message(message, session_key):
     # TODO: Implement this function
+    #techtutorialsx.com ref
+    cipher = AES.new(session_key, AES.MODE_ECB)
+    decMessage = cipher.decrypt(message)
+    print('decrypt message done')
+    return decMessage
     
-    session_Key_RSA = RSA.importKey(session_key)
-    cipher = Cipher_PKCS1_v1_5.new(session_Key_RSA)
-    decrypted_Message = cipher.decrypt(message,None).decode()
-    return decrypted_Message
-
+    
+    
 
 # Sends a message over TCP
 def send_message(sock, message):
@@ -119,12 +134,15 @@ def main():
             exit(0)
 
         # TODO: Encrypt message and send to server
-        encrypted_Message = encrypt_message(message, encrypted_key)
+        print("ooooolala")
+        encrypted_Message = encrypt_message(message, key)
         send_message(sock, encrypted_Message)
 
         # TODO: Receive and decrypt response from server
-        message = receive_message(sock).decode()
-        final_Message = decrypt_message(message, encrypted_key)
+        message = receive_message(sock)
+        final_Message = decrypt_message(message, key)
+        print("final message", final_Message)
+        
     finally:
         print('closing socket')
         sock.close()

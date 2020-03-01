@@ -15,51 +15,28 @@
 
 import socket
 from Crypto.PublicKey import RSA
+from Crypto.Cipher import AES
 from Crypto.Cipher import PKCS1_OAEP as pkcs1
-from base64 import b64decode,b64encode
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import padding
+
 
 host = "localhost"
 port = 10001
-
-
-
-#Reference:https://stackoverflow.com/questions/21327491/using-pycrypto-how-to-import-a-rsa-public-key-and-use-it-to-encrypt-a-string
-prvkey = """-----BEGIN RSA PRIVATE KEY-----
-Proc-Type: 4,ENCRYPTED
-DEK-Info: AES-128-CBC,2562CAD057F6851839C9009BBB2FB171
-
-JLRcwaRxQczqY9kaCv37iH+46buyrGxRVnAQnYNKO7tK8bzOHaTrGiH9PdbS2elB
-VtNPpG2Z4W3wIAIqoVjoR0r9LUXD3jd36Vw8SvPAvqTgbICZeGNclEUBHR/Jn6yZ
-m+7o9BgoBc69aqt4/OnprJZsJIK+rCQZrYqT8QYCSMc+JVc8bunmyAI0KH8sHQWX
-A4W4TEkZdxm8lZ8jo/OXRbjLYr4Vki0XBp/D9HsbWJrQmfigTpWEL3tGpG2og2MO
-5/CU4WpX/E3ZUUzO8M4RfaFbGVjfS3Or3StcF8/DMDr8HKisq/BUYZqgSwGLSNoV
-Kveurn6sek1cbZEQ46+NntbV4CFhsfDCA3VAJrPpxY/xiiLNK/r4AHvXFZ+FZ50d
-t3e3C/E6gdUYDdnvPbLkzVD7tHIyur+zphz7jFGc2bUiD7qy+3PDU6dPC4vvPowy
-lWkz/5mrPYv3jiLNOvFGHR/jYi3iv/H0exN56d5RpefENsNQml484O7+ir8rTgHN
-AZgiooxf/+Ue7NghHEea5bqKAmIaICLiHBxvr/wLfpNRPDRgt2cmYzr1nwqu0a5g
-7uZBn1DK1ScIj40loAtfF8kd5lqglbeeRfqGVHWMKaEI1OCFBUUGFZY6IY1Bhd+O
-HNuxgSopeUnDD2/jI/HUBzVyfx/2YE6wmYu+EmYfkCh6388mModuiin5/e/uY27N
-wffEJLp9j/cox+b0hNRMoOa68BryCPze/vworqFoSApfCpASJRXcPKkeO4LEedee
-mSMwGiynpMftszK91A4WrwqZ0+GJ7fab19gj5T7Q7GbXLBNcRNnBDayqKUlgJCS1
-r6FF4BcgLaLCHKvIbaXcDgxovMCbxEFVEHn3YZNO80FPakFOx7ylCVPXQoK62Vgn
-Nebn8AEtRjc/9E40z/qpM/CWeoi71pXtY5ti5i2hAnAFnz3lvNKV4CNklRS+HeV/
-N3Mue47gTFbwKuyeUKNuUMky/v9JkT7tgO+Q4GSbbBJIZu+PSHC7qd4PxTtG8F6M
-WbhpPAeTNXECVYmefQw0W/Mp92WueOOeAnVYHrvPq76J59LupGk7fil03mxQcrM4
-8qL5DiocdJ5eLDTQhIVrkGjZGMfR4GeeA3YkvjXZ8Yy57PDYTB1c8a5O7OrXLXRe
-BvDSFRcNMJkIlREE0+whi96VZlNfL+8/UjSzUbHDhKMzqkdgTjhaJ2aTwOv84M+3
-hj5dEK8Fr9naiRjIwVdVlFRqeDAtXSK6MAV8UMCB1oFztPXGjuhTGqTmi7JmC2Uz
-WJ5hD3Lh0XU2Hfyf1qXDD7TWZFL79NSTtY7c/khBDCg9hk3QimWwntkxXfoL0opk
-BmVnO3h18QAErZUKGBn19YyRRUQ0ydSuvh0hDAUkPqr60zuloKGJuhjqFOCp90sX
-Lm5CAvLLmOM2eRaW6a1TxzffqCleYg3NpKOX4OBhbRmg4/VNiBizzT6++3Y/8yqD
-kBqp7CzVxP7y+a6J0aznc3U4V+aKLdOmOfdA5G0/29WQ+Ec5sAolnp3R9h1njYPt
-sxba4Q8MG0VQyw6OZIT7Ap0tRQuYdzabKhcivn7qP6QY+NK/JFeIYiChmO9maglI
------END RSA PRIVATE KEY-----"""
-
 
 # A helper function. It may come in handy when performing symmetric encryption
 def pad_message(message):
     return message + " " * ((16 - len(message)) % 16)
 
+def helper():
+	#password must have a b in front
+	kf = open("keys", "rb")
+	private_Key = serialization.load_pem_private_key(kf.read(),password=b'apple',backend=default_backend())
+	kf.close()
+	print("fooey")
+	return private_Key
 
 # Write a function that decrypts a message using the server's private key
 def decrypt_key(session_key):
@@ -68,12 +45,9 @@ def decrypt_key(session_key):
     
     #session_key = the encrypted session key from the client side of things. We must decrypt that using the server's private
     #key and return the AES key
-    print("woopy",session_key)
-    private_Key = RSA.importKey(prvkey,None)
-    cipher = pkcs1.new(private_Key)
-    print("kitty")
-    decrypt_AES_key = cipher.decrypt(session_key,None)
-    print(decrypt_AES_Key)
+    private_Key = helper()
+    decrypt_AES_key = private_Key.decrypt(session_key,padding=padding.OAEP(mgf=padding.MGF1(hashes.SHA1()),algorithm=hashes.SHA1(),label=None,))
+    print("kitty",decrypt_AES_key)
     return decrypt_AES_key
     
 
@@ -81,21 +55,27 @@ def decrypt_key(session_key):
 # Write a function that decrypts a message using the session key
 def decrypt_message(client_message, session_key):
     # TODO: Implement this function
-    
-    session_Key_RSA = RSA.importKey(session_key)
-    cipher = Cipher_PKCS1_v1_5.new(session_Key_RSA)
-    decrypted_Message = cipher.decrypt(client_message,None).decode()
-    return decrypted_Message
+    #techtutorialsx.com ref
+    cipher = AES.new(session_key, AES.MODE_ECB)
+    decMessage = cipher.decrypt(client_message)
+    print("decMessage")
+    print('decrypt message done')
+    return decMessage
 
 
 # Encrypt a message using the session key
 def encrypt_message(message, session_key):
-    # TODO: Implement this function
-    
-    key = RSA.importKey(session_key)
-    cipher = Cipher_PKCS1_v1_5.new(encryptKey)
-    cipher_message = cipher.encrypt(message.encode())
-    return cipher_message
+	# TODO: Implement this function
+	#techtutorialsx.com ref
+	length_Message = len(message)
+	
+	#integer division to get proper padding
+	padding = ((length_Message + 16) // 16) * 16 
+	padded_Message = message + " "*(padding-length_Message)
+	cipher = AES.new(session_key, AES.MODE_ECB)
+	encMessage = cipher.encrypt(padded_Message)
+	print('encrypt message done')
+	return encMessage
 
 
 # Receive 1024 bytes from the client
@@ -156,19 +136,22 @@ def main():
 
                 # Decrypt key from client
                 plaintext_key = decrypt_key(encrypted_key)
+                print("decrypted AES", plaintext_key)
 
                 # Receive encrypted message from client
                 ciphertext_message = receive_message(connection)
-
+                print("plooey", ciphertext_message)
+				
                 # TODO: Decrypt message from client
                 plaintext_ciphertext = decrypt_message(ciphertext_message, plaintext_key)
 
                 # TODO: Split response from user into the username and password
                 print(plaintext_ciphertext)
                 #message = verify_hash(user, password)
+                message = "True"
 
                 # TODO: Encrypt response to client
-                #ciphertext_response = encrypt_message(message, session_key)
+                ciphertext_response = encrypt_message(message, plaintext_key)
 
                 # Send encrypted response
                 send_message(connection, ciphertext_response)
