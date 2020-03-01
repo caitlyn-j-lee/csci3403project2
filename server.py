@@ -14,6 +14,8 @@
 """
 
 import socket
+import hashlib
+import binascii
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import AES
 from Crypto.Cipher import PKCS1_OAEP as pkcs1
@@ -30,24 +32,18 @@ port = 10001
 def pad_message(message):
     return message + " " * ((16 - len(message)) % 16)
 
-def helper():
-	#password must have a b in front
-	kf = open("keys", "rb")
-	private_Key = serialization.load_pem_private_key(kf.read(),password=b'apple',backend=default_backend())
-	kf.close()
-	print("fooey")
-	return private_Key
 
 # Write a function that decrypts a message using the server's private key
 def decrypt_key(session_key):
     # TODO: Implement this function
     #Reference:https://stackoverflow.com/questions/21327491/using-pycrypto-how-to-import-a-rsa-public-key-and-use-it-to-encrypt-a-string
+    #Reference2"https://readthedocs.org/projects/cryptography/downloads/pdf/stable/ 
     
-    #session_key = the encrypted session key from the client side of things. We must decrypt that using the server's private
-    #key and return the AES key
-    private_Key = helper()
+    #password must have a b in front
+    kf = open("keys", "rb")
+    private_Key = serialization.load_pem_private_key(kf.read(),password=b'apple',backend=default_backend())
+    kf.close()
     decrypt_AES_key = private_Key.decrypt(session_key,padding=padding.OAEP(mgf=padding.MGF1(hashes.SHA1()),algorithm=hashes.SHA1(),label=None,))
-    print("kitty",decrypt_AES_key)
     return decrypt_AES_key
     
 
@@ -55,26 +51,24 @@ def decrypt_key(session_key):
 # Write a function that decrypts a message using the session key
 def decrypt_message(client_message, session_key):
     # TODO: Implement this function
-    #techtutorialsx.com ref
+    #techtutorialsx.com/2018/04/09python-pycrypto-using-aes-128-in-ecb-mode/
     cipher = AES.new(session_key, AES.MODE_ECB)
     decMessage = cipher.decrypt(client_message)
-    print("decMessage")
-    print('decrypt message done')
+    decMessage = decMessage.strip()
     return decMessage
 
 
 # Encrypt a message using the session key
 def encrypt_message(message, session_key):
 	# TODO: Implement this function
-	#techtutorialsx.com ref
+	#techtutorialsx.com/2018/04/09python-pycrypto-using-aes-128-in-ecb-mode/
 	length_Message = len(message)
 	
 	#integer division to get proper padding
-	padding = ((length_Message + 16) // 16) * 16 
+	padding = ((length_Message + 15) // 16) * 16 
 	padded_Message = message + " "*(padding-length_Message)
 	cipher = AES.new(session_key, AES.MODE_ECB)
 	encMessage = cipher.encrypt(padded_Message)
-	print('encrypt message done')
 	return encMessage
 
 
@@ -103,7 +97,15 @@ def verify_hash(user, password):
             line = line.split("\t")
             if line[0] == user:
                 # TODO: Generate the hashed password
-                # hashed_password =
+                
+                #prepare the salt stored in line[1] to be converted to byte format and convert             
+                prep1 = line[1].replace("'","")
+                prep2 = prep1[1:]
+                salt = str.encode(prep2)
+
+                hashed_password = hashlib.pbkdf2_hmac('sha512', password.encode('utf-8'), salt,100000)
+                hashed_password = binascii.hexlify(hashed_password)
+                hashed_password = (salt + hashed_password).decode('ascii')
                 return hashed_password == line[2]
         reader.close()
     except FileNotFoundError:
@@ -136,19 +138,24 @@ def main():
 
                 # Decrypt key from client
                 plaintext_key = decrypt_key(encrypted_key)
-                print("decrypted AES", plaintext_key)
-
+                
                 # Receive encrypted message from client
                 ciphertext_message = receive_message(connection)
-                print("plooey", ciphertext_message)
-				
+                				
                 # TODO: Decrypt message from client
                 plaintext_ciphertext = decrypt_message(ciphertext_message, plaintext_key)
 
                 # TODO: Split response from user into the username and password
-                print(plaintext_ciphertext)
-                #message = verify_hash(user, password)
-                message = "True"
+                values = plaintext_ciphertext.split()
+                user = values[0].decode()
+                password = values[1].decode()
+                
+                verify_user = verify_hash(user, password)
+                
+                if(verify_user == True): message = 'True'
+                else: message = 'False'
+                
+                print(user + ' ' + password)
 
                 # TODO: Encrypt response to client
                 ciphertext_response = encrypt_message(message, plaintext_key)

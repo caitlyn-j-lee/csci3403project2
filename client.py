@@ -40,15 +40,7 @@ def pad_message(message):
 def generate_key():
     # TODO: Implement this function
     return os.urandom(16)
-
-
-def helper():
-	#password must have a b in front
-	kf = open("keys.pem", "rb")
-	public_Key = serialization.load_pem_public_key(kf.read(),backend=default_backend())
-	kf.close()
-	print("fooey")
-	return public_Key
+    
 
 # Takes an AES session key and encrypts it using the appropriate
 # key and return the value
@@ -56,40 +48,37 @@ def encrypt_handshake(session_key):
     # TODO: Implement this function
     
     #message = session_key. We must encrypt this session key with the server's public key so no one can know the AES session key
-    public_key = helper()
+    kf = open("keys.pem", "rb")
+    public_key = serialization.load_pem_public_key(kf.read(),backend=default_backend())
+    kf.close()
     cipher_message = public_key.encrypt(session_key,padding=padding.OAEP(mgf=padding.MGF1(hashes.SHA1()),algorithm=hashes.SHA1(),label=None,))
-    print("cipher")
     return cipher_message
 
 
 # Encrypts the message using AES. Same as server function
 def encrypt_message(message, session_key):
     # TODO: Implement this function
-    #techtutorialsx.com ref
+    #techtutorialsx.com/2018/04/09python-pycrypto-using-aes-128-in-ecb-mode/
 	length_Message = len(message)
 	
 	#integer division to get proper padding
-	padding = ((length_Message + 16) // 16) * 16 
+	padding = ((length_Message + 15) // 16) * 16 
 	padded_Message = message + " "*(padding-length_Message)
 	cipher = AES.new(session_key, AES.MODE_ECB)
 	encMessage = cipher.encrypt(padded_Message)
-	print('encrypt message done')
 	return encMessage
     
-
 
 # Decrypts the message using AES. Same as server function
 def decrypt_message(message, session_key):
     # TODO: Implement this function
-    #techtutorialsx.com ref
+    #techtutorialsx.com/2018/04/09python-pycrypto-using-aes-128-in-ecb-mode/
     cipher = AES.new(session_key, AES.MODE_ECB)
     decMessage = cipher.decrypt(message)
-    print('decrypt message done')
+    decMessage = decMessage.strip()
     return decMessage
     
-    
-    
-
+     
 # Sends a message over TCP
 def send_message(sock, message):
     sock.sendall(message)
@@ -119,7 +108,6 @@ def main():
 
         # Generate random AES key
         key = generate_key()
-        print("key",key)
 
         # Encrypt the session key using server's public key
         encrypted_key = encrypt_handshake(key)
@@ -134,14 +122,17 @@ def main():
             exit(0)
 
         # TODO: Encrypt message and send to server
-        print("ooooolala")
         encrypted_Message = encrypt_message(message, key)
         send_message(sock, encrypted_Message)
 
         # TODO: Receive and decrypt response from server
         message = receive_message(sock)
         final_Message = decrypt_message(message, key)
-        print("final message", final_Message)
+        
+        result = final_Message.decode()        
+        
+        if result == "True": print("User successfully authenticated!")
+        else: print("Password or username incorrect")
         
     finally:
         print('closing socket')
