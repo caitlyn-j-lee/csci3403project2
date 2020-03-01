@@ -3,7 +3,7 @@
 Client folder files:
 * client.py
 * keys.pem
-*keys.pub
+* keys.pub
 
 Server folder files:
 * add_user.py
